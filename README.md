@@ -1,116 +1,139 @@
 # SPENDEX
 
-**SPENDEX** is a premium, India-first personal finance and wealth-management application. It is designed to provide users with a clear, calm, and visually sophisticated interface for tracking both everyday expenses and long-term investments. 
+SPENDEX is an India-first personal finance and wealth-management application built with Java and Spring Boot. It provides a comprehensive platform that combines everyday expense tracking with active investment management, portfolio valuation, and profit/loss monitoring for Indian market-linked investments. SPENDEX is designed with a professional, editorial European aesthetic to deliver a premium wealth-management experience.
 
-The application utilizes a private wealth-management aesthetic, prioritizing editorial typography, muted colors, and subtle physical depth to present financial data without the clutter of generic SaaS dashboards.
+## Features
 
----
+- **Expense CRUD**: Track, categorize, and manage your daily expenses.
+- **Investment CRUD**: Add, edit, and delete portfolio holdings.
+- **MySQL Persistence**: Robust data storage using Spring Data JPA.
+- **Indian Stock Support**: Auto-completion and tracking for NSE-focused symbols (e.g., RELIANCE · NSE, TCS · NSE, INFY · NSE, HDFCBANK · NSE, ICICIBANK · NSE, SBIN · NSE, ITC · NSE).
+- **Indian Financial Formatting**: Built-in support for INR currency presentation and Lakhs/Crores number formatting.
+- **Portfolio Valuation**: Dynamic calculation of current portfolio worth.
+- **Profit/Loss Calculations**: Automatic computation of total returns and monetary gains or losses.
+- **Return Percentage**: Track the relative performance of your investments.
+- **Asset Allocation**: Understand your exposure across different asset classes (Stocks, Gold, Fixed Deposits).
+- **SSE-Based Browser Updates**: Targeted DOM updates deliver fresh financial data without full page reloads.
+- **Responsive Editorial UI**: Clean, premium, paper-like interface with subtle depth and charcoal typography.
+- **Market-Price Retrieval**: Fetches market quotes from Yahoo Finance.
 
-## 🎯 Project Purpose
+## Market Data
 
-To deliver a secure, localized (India-first), and elegant personal finance experience. SPENDEX unifies expense tracking with equity portfolio management, offering users a comprehensive "wealth snapshot" powered by modern web technologies.
+SPENDEX currently uses Yahoo Finance for market-data retrieval. These quotes are delayed and are explicitly labelled `DELAYED` in the application. SPENDEX does not generate fake or simulated market prices. If a quote cannot be retrieved due to network or rate limits, the application preserves the last known value rather than incorrectly replacing it with zero. 
 
----
+The SSE architecture provides dynamic delivery of updated values to the browser, but it does not turn delayed Yahoo Finance data into real-time market data. No Upstox or Zerodha integration is currently active.
 
-## ✨ Features
+## Profit & Loss
 
-- **Expense Management:** Track, categorize, and filter daily expenses. Features client-side search, category breakdowns, and monthly reporting.
-- **Investment Management:** Maintain a portfolio of Stocks, ETFs, Mutual Funds, Fixed Deposits, and Gold.
-- **Indian Stock Support:** First-class support for NSE and BSE equities with built-in autocomplete for major Indian instruments (e.g., Reliance, TCS, HDFC Bank).
-- **Portfolio Analytics:** Real-time calculation of Total Invested, Current Value, Profit/Loss (P/L), and Return Percentages. Includes visual asset allocation breakdowns.
-- **Market-Data Architecture:** Uses an asynchronous event-driven backend. Market quotes are fetched using a delayed Yahoo Finance provider and pushed to the browser.
-- **Server-Sent Events (SSE):** The frontend receives market updates through SSE, allowing the UI to gracefully flash updated values without requiring a page refresh or aggressive client-side polling.
-- **P/L Calculations:** Mathematically accurate formulations ensuring precise financial tracking.
-- **Premium UI/Design:** Designed with a European editorial aesthetic—off-white backgrounds, dark charcoal serif typography, and extremely subtle shadow elevations.
+SPENDEX uses the following formulas to compute portfolio performance whenever new market quotes are received:
 
----
+- **Invested Value** = Quantity × Purchase Price
+- **Current Value** = Quantity × Current Market Price
+- **Profit/Loss** = Current Value − Invested Value
+- **Return %** = (Profit/Loss ÷ Invested Value) × 100
 
-## 🛠 Tech Stack
+## Real-Time UI / SSE
 
-- **Backend:** Java 21, Spring Boot 3.2, Spring Web, Spring WebFlux (for WebClient)
-- **Frontend:** Vanilla HTML5, CSS3, JavaScript (ES6+). No heavy frontend frameworks to ensure maximum performance and minimal bloat.
-- **Data Persistence:** Local CSV flat-file storage for lightweight, portable deployment.
-- **Build Tool:** Apache Maven
+SPENDEX employs a unidirectional data flow for dynamic UI updates:
 
----
+Yahoo Finance
+↓
+Market Data Service
+↓
+Investment Service
+↓
+Server-Sent Events (SSE)
+↓
+Browser
+↓
+Targeted DOM updates
 
-## 🏗 Architecture
+- SSE avoids full-page refreshes.
+- Only affected financial values are updated dynamically.
+- Changed values receive subtle visual feedback.
+- The frontend features a 1-second timer that only updates the local "Updated X sec ago" text. This timer does not poll the backend.
+- SSE delivers updates cleanly, but it does not make delayed Yahoo Finance data real-time.
 
-SPENDEX relies on a clean `MarketDataProvider` abstraction. 
+## Database Architecture
 
-Currently, it utilizes the `YahooFinanceProvider` to fetch quotes. A `MarketUpdateScheduler` runs on a dedicated thread, requesting updates for active symbols, which are then cached and broadcasted to connected browsers via the `InvestmentStreamService` using Server-Sent Events (SSE). 
+SPENDEX previously used CSV files but has now migrated to MySQL for robust persistence. 
 
-This decoupled architecture means SPENDEX is fully prepared for a genuine WebSocket-based Indian real-time provider to be plugged in without requiring any frontend refactoring.
+Current architecture:
 
----
+Spring Boot
+↓
+Spring Data JPA
+↓
+Hibernate
+↓
+MySQL
 
-## 📂 Project Structure
+Main tables include:
+- `expenses`
+- `investments`
+
+The backend relies on `ExpenseRepository` and `InvestmentRepository` interfaces for data access, alongside a `DatabaseMigrationService` for safe transitions. Market quotes are runtime data and are not permanently stored as investment records in the database.
+
+## CSV → MySQL Migration
+
+Earlier versions of SPENDEX used CSV files for persistence. Existing historical expense and investment records were migrated into MySQL through a specially designed `DatabaseMigrationService`. 
+
+The migration was designed to be idempotent: successfully migrated legacy CSV files were renamed with `.migrated` to ensure data was transferred only once. MySQL is now the active persistence mechanism, and CSV is no longer used for normal CRUD operations.
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Java |
+| Backend | Spring Boot |
+| Persistence | Spring Data JPA |
+| ORM | Hibernate |
+| Database | MySQL |
+| Frontend | HTML, CSS, Vanilla JavaScript |
+| Market Data | Yahoo Finance |
+| Browser Updates | Server-Sent Events (SSE) |
+| Build | Maven |
+
+## Project Structure
 
 ```text
-SPENDEX/
-├── data/                      # Local CSV storage (ignored in git)
+spendex/
 ├── src/
 │   └── main/
-│       ├── java/              # Spring Boot backend
+│       ├── java/
+│       │   └── com/expensetracker/
+│       │       ├── controller/
+│       │       ├── model/
+│       │       ├── service/
+│       │       └── util/
 │       └── resources/
-│           ├── application.properties
-│           └── static/        # HTML, CSS, JS frontend assets
-├── README.md
+│           ├── static/
+│           └── application.properties
 ├── .gitignore
-└── pom.xml
+├── pom.xml
+└── README.md
 ```
 
----
-
-## 🚀 Installation & Running Locally
+## Getting Started
 
 ### Prerequisites
-- **Java 21** or higher
-- **Maven** 3.9+
 
-### Steps
-1. Clone the repository.
-   ```bash
-   git clone https://github.com/yourusername/spendex.git
-   cd spendex
-   ```
-2. Build the application.
-   ```bash
-   mvn clean package
-   ```
-3. Run the application.
-   ```bash
-   mvn spring-boot:run
-   ```
-4. Access the UI.
-   Open your browser and navigate to `http://localhost:8080`
+- Java 21
+- Maven
+- MySQL
+- Git
 
----
+### Installation
 
-## 🧪 Testing
-
-To run the test suite, execute:
 ```bash
-mvn test
+git clone https://github.com/sap-tarshi7/spendex.git
+cd spendex
 ```
 
----
+Configure your MySQL connection in `src/main/resources/application.properties` (or via environment variables) and run the application:
 
-## ⚠️ Current Limitations
+```bash
+mvn spring-boot:run
+```
 
-- **Delayed Market Data:** The current Yahoo Finance integration provides quotes that are delayed by 15-20 minutes. The UI explicitly flags this data as **DELAYED**. SPENDEX does not simulate or fake real-time ticks.
-- **CSV Storage:** Data is currently persisted in flat `.csv` files. This is excellent for local, single-user operation but lacks the concurrency features of a traditional relational database (RDBMS).
-
----
-
-## 🔮 Future Scope
-
-- **Real-Time Indian Brokerage Integration:** Plug a genuine Indian broker WebSocket API (e.g., Upstox, Zerodha) into the `StreamingMarketDataProvider` interface for live tick data.
-- **Database Migration:** Transition the `FileHandler` storage mechanism to Spring Data JPA using PostgreSQL for multi-tenant capabilities.
-- **Extended Asset Classes:** Add support for tracking Provident Funds (EPF/PPF) and real estate.
-
----
-
-## 📄 License
-
-This project currently has no license. All rights reserved.
+Access the application at `http://localhost:8080`.
