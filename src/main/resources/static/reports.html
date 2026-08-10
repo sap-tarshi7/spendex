@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spendex — Reports</title>
+  <meta name="description" content="Detailed analysis of your spending habits.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="toast-container"></div>
+
+<div class="app-shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">SPENDEX</span>
+      <span class="brand-sub">Personal Finance</span>
+    </div>
+    <nav class="nav">
+      <a href="/"              class="nav-item">Overview</a>
+      <a href="/expenses.html" class="nav-item">Expenses</a>
+      <a href="/add.html"      class="nav-item">Add Expense</a>
+      <a href="/investments.html" class="nav-item">Investments</a>
+      <a href="/reports.html"  class="nav-item active">Reports</a>
+    </nav>
+    <div class="sidebar-footer">Spendex · 2026</div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main-content">
+
+    <div class="anim d0">
+      <p class="page-eyebrow">Financial Analysis</p>
+    </div>
+
+    <div class="anim d1">
+      <h1 class="page-title">Spending Report</h1>
+      <p class="page-subtitle">Understand where your money goes.</p>
+    </div>
+
+    <hr class="divider anim d2">
+
+    <!-- ── MONTH SELECTOR ── -->
+    <div class="month-selector anim d3">
+      <div class="filter-group">
+        <label class="filter-label" for="report-month">Report Period</label>
+        <select class="filter-select" id="report-month" style="font-size:16px; padding:12px 20px;">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+      <button class="btn-secondary" id="refresh-btn" style="padding:13px 24px;" aria-label="Refresh data">
+        Refresh
+      </button>
+    </div>
+
+    <!-- ── METRICS GRID ── -->
+    <div class="metrics-grid-2 anim d4" id="report-metrics" style="display:none;">
+      <div class="metric-cell">
+        <div class="stat-value" id="r-total">
+          <span class="skeleton" style="width:100px;height:24px;"></span>
+        </div>
+        <div class="stat-label">Total for Month</div>
+      </div>
+      <div class="metric-cell">
+        <div class="stat-value" id="r-avg">
+          <span class="skeleton" style="width:80px;height:24px;"></span>
+        </div>
+        <div class="stat-label">Daily Average</div>
+      </div>
+      <div class="metric-cell">
+        <div class="stat-value" id="r-top">
+          <span class="skeleton" style="width:90px;height:24px;"></span>
+        </div>
+        <div class="stat-label">Highest Category</div>
+      </div>
+    </div>
+
+    <!-- ── FULL CATEGORY BREAKDOWN ── -->
+    <div id="report-content" class="anim d5">
+      <div class="loading-text">Loading report…</div>
+    </div>
+
+    <!-- ── WEALTH SNAPSHOT ── -->
+    <div id="rpt-wealth-snapshot" style="display:none; margin-top: 48px;" class="anim d6">
+      <hr class="divider" style="margin-bottom: 24px;">
+      <div class="section-header" style="margin-bottom: 16px;">
+        <span class="section-title">Wealth Snapshot</span>
+      </div>
+      <div class="stats-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div class="stat-cell" style="border-right: 1px solid var(--border);">
+          <div class="stat-value" id="rpt-total-invested"></div>
+          <div class="stat-label">Total Invested</div>
+        </div>
+        <div class="stat-cell" style="border-right: 1px solid var(--border); padding-left: 16px;">
+          <div class="stat-value" id="rpt-current-value"></div>
+          <div class="stat-label">Current Value</div>
+        </div>
+        <div class="stat-cell" style="padding-left: 16px;">
+          <div class="stat-value" id="rpt-total-return"></div>
+          <div class="stat-label">Total Return</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+/* ── Populate month selector ── */
+const MONTHS = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December'
+];
+
+function initMonthSelect() {
+  const sel = document.getElementById('report-month');
+  const now = new Date();
+  
+  // Create last 12 months
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${d.getMonth() + 1}`;
+    const txt = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = txt;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+/* ── Load Report ── */
+async function loadReport() {
+  const sel = document.getElementById('report-month').value;
+  const [year, month] = sel.split('-');
+  const content = document.getElementById('report-content');
+  const metrics = document.getElementById('report-metrics');
+  
+  // Reset animation state
+  content.style.opacity = '0.5';
+  
+  try {
+    const data = await apiFetch(`/api/report?month=${month}&year=${year}`);
+    
+    metrics.style.display = '';
+    
+    /* Metrics count-up */
+    animateNumber(document.getElementById('r-total'), data.totalSpending, 800);
+    
+    // Calculate simple daily average for the month
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const dailyAvg = data.totalSpending / daysInMonth;
+    animateNumber(document.getElementById('r-avg'), dailyAvg, 750);
+    
+    // Top category
+    const topCatEl = document.getElementById('r-top');
+    if (data.highestCategory) {
+      topCatEl.textContent = `${data.highestCategory}`;
+    } else {
+      topCatEl.textContent = '—';
+    }
+
+    /* Category breakdown chart */
+    const catTotals  = data.categoryTotals || {};
+    const catEntries = Object.entries(catTotals).sort((a,b) => b[1] - a[1]); // Descending
+    
+    if (catEntries.length === 0) {
+      content.innerHTML = buildEmptyState(
+        'No Data',
+        'No expenses found',
+        `You have no recorded expenses for ${MONTHS[month-1]} ${year}.`,
+        '/add.html', 'Add an Expense →'
+      );
+    } else {
+      const maxAmt = catEntries[0][1]; // Highest value for 100% bar scale
+      
+      content.innerHTML = `
+        <div class="section-header" style="margin-bottom:12px;">
+          <span class="section-title">Category Breakdown</span>
+        </div>
+        ${catEntries.map(([cat, amt], idx) => {
+          const pct   = ((amt / maxAmt) * 100).toFixed(1);
+          const share = ((amt / data.totalSpending) * 100).toFixed(0);
+          // Stagger row entrance
+          const dCls  = `d${Math.min(idx, 9)}`; 
+          
+          return `<div class="rpt-cat-row ${dCls}">
+            <span class="rpt-cat-name">${escHtml(cat)}</span>
+            <div class="rpt-track">
+              <div class="rpt-fill" data-pct="${pct}" style="width:0%"></div>
+            </div>
+            <span class="rpt-pct">${share}%</span>
+            <span class="rpt-amount">${formatRupees(amt)}</span>
+          </div>`;
+        }).join('')}
+      `;
+      
+      triggerBars(150);
+    }
+    
+    content.style.opacity = '1';
+    
+  } catch (err) {
+    content.style.opacity = '1';
+    content.innerHTML = buildEmptyState(
+      'Error',
+      'Failed to load report',
+      err.message || 'Please try again.',
+      null, null
+    );
+  }
+}
+
+/* ── Init ── */
+initMonthSelect();
+document.getElementById('report-month').addEventListener('change', loadReport);
+document.getElementById('refresh-btn').addEventListener('click', loadReport);
+loadReport();
+
+/* ── Wealth Snapshot Fetch ── */
+fetch('/api/investments/summary').then(r => r.json()).then(invData => {
+  if (invData.totalInvested > 0) {
+    document.getElementById('rpt-wealth-snapshot').style.display = 'block';
+    const fmtM = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    
+    document.getElementById('rpt-total-invested').textContent = fmtM.format(invData.totalInvested);
+    document.getElementById('rpt-current-value').textContent = fmtM.format(invData.currentValue);
+    
+    const trHtml = invData.totalProfitLoss >= 0 ? 
+      '<span class="color-profit">+' + fmtM.format(invData.totalProfitLoss) + '</span>' : 
+      '<span class="color-loss">' + fmtM.format(invData.totalProfitLoss) + '</span>';
+      
+    document.getElementById('rpt-total-return').innerHTML = trHtml;
+  }
+}).catch(e => console.log("Investments not initialized.", e));
+</script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spendex — Add Expense</title>
+  <meta name="description" content="Record a new expense in seconds.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="toast-container"></div>
+
+<div class="app-shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">SPENDEX</span>
+      <span class="brand-sub">Personal Finance</span>
+    </div>
+    <nav class="nav">
+      <a href="/"              class="nav-item">Overview</a>
+      <a href="/expenses.html" class="nav-item">Expenses</a>
+      <a href="/add.html" class="nav-item active">Add Expense</a>
+      <a href="/investments.html" class="nav-item">Investments</a>
+      <a href="/reports.html" class="nav-item">Reports</a>
+    </nav>
+    <div class="sidebar-footer">Spendex · 2026</div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main-content">
+
+    <div class="anim d0">
+      <p class="page-eyebrow">New Entry</p>
+    </div>
+
+    <div class="anim d1">
+      <h1 class="page-title">Add an Expense</h1>
+      <p class="page-subtitle">Every entry keeps your picture clear.</p>
+    </div>
+
+    <hr class="divider anim d2">
+
+    <!-- Success banner -->
+    <div class="feedback-banner" id="success-banner" role="alert" aria-live="polite">
+      <div class="feedback-eye">Expense Added</div>
+      <div class="feedback-text" id="success-detail"></div>
+    </div>
+
+    <!-- Error banner -->
+    <div class="feedback-banner error" id="error-banner" role="alert" aria-live="polite">
+      <div class="feedback-eye">Something went wrong</div>
+      <div class="feedback-text" id="error-detail"></div>
+    </div>
+
+    <!-- ── THE FORM ── -->
+    <form class="form-section anim d3" id="expense-form" novalidate
+          aria-label="Add expense form">
+
+      <!-- AMOUNT -->
+      <div class="field">
+        <label class="field-label" for="amount">Amount (₹)</label>
+        <input class="field-input"
+               type="number"
+               id="amount"
+               name="amount"
+               placeholder="0"
+               min="0.01"
+               step="any"
+               autocomplete="off"
+               aria-describedby="err-amount"
+               inputmode="decimal">
+        <div class="field-underline"></div>
+        <div class="field-error" id="err-amount" role="alert"></div>
+      </div>
+
+      <!-- CATEGORY -->
+      <div class="field">
+        <label class="field-label" for="category">Category</label>
+        <select class="field-select"
+                id="category"
+                name="category"
+                aria-describedby="err-category">
+          <option value="">Select a category</option>
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Shopping</option>
+          <option>Bills</option>
+          <option>Education</option>
+          <option>Entertainment</option>
+          <option>Travel</option>
+          <option>Healthcare</option>
+          <option>Other</option>
+        </select>
+        <div class="field-underline"></div>
+        <div class="field-error" id="err-category" role="alert"></div>
+      </div>
+
+      <!-- DATE -->
+      <div class="field">
+        <label class="field-label" for="date">Date</label>
+        <input class="field-input"
+               type="date"
+               id="date"
+               name="date"
+               aria-describedby="err-date">
+        <div class="field-underline"></div>
+        <div class="field-error" id="err-date" role="alert"></div>
+      </div>
+
+      <!-- DESCRIPTION -->
+      <div class="field">
+        <label class="field-label" for="description">
+          Description
+          <span style="color:var(--text-3);font-weight:400;text-transform:none;letter-spacing:0;">
+            — optional
+          </span>
+        </label>
+        <input class="field-input"
+               type="text"
+               id="description"
+               name="description"
+               placeholder="e.g. Lunch at college canteen"
+               maxlength="200"
+               autocomplete="off">
+        <div class="field-underline"></div>
+      </div>
+
+      <!-- SUBMIT BUTTONS -->
+      <div class="btn-row">
+        <button type="submit" class="btn-primary" id="submit-btn" aria-label="Save expense">
+          <span id="btn-label">Add Expense</span>
+          <span id="btn-arrow">→</span>
+        </button>
+        <button type="button" class="btn-secondary" id="clear-btn">Clear</button>
+      </div>
+
+    </form>
+
+    <!-- POST-SUBMIT LINKS -->
+    <div id="post-actions" style="display:none; margin-top:24px;" class="anim d0">
+      <a href="/" class="btn-link" style="margin-right:24px;">View Overview →</a>
+      <a href="/expenses.html" class="btn-link">All Expenses →</a>
+    </div>
+
+  </main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+/* ── Set today's date ── */
+const dateEl = document.getElementById('date');
+dateEl.value = todayIso();
+dateEl.max   = todayIso();
+
+/* ── Helpers ── */
+function showFieldError(fieldId, msg) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function clearFieldError(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  el.textContent = '';
+  el.classList.remove('visible');
+}
+
+function clearAllErrors() {
+  ['err-amount', 'err-category', 'err-date'].forEach(clearFieldError);
+}
+
+function showSuccessBanner(detail) {
+  const banner = document.getElementById('success-banner');
+  const detEl  = document.getElementById('success-detail');
+  document.getElementById('error-banner').classList.remove('visible');
+  detEl.textContent  = detail;
+  banner.classList.add('visible');
+  document.getElementById('post-actions').style.display = '';
+}
+
+function showErrorBanner(msg) {
+  const banner = document.getElementById('error-banner');
+  const detEl  = document.getElementById('error-detail');
+  document.getElementById('success-banner').classList.remove('visible');
+  detEl.textContent = msg;
+  banner.classList.add('visible');
+}
+
+function setLoading(loading) {
+  const btn    = document.getElementById('submit-btn');
+  const label  = document.getElementById('btn-label');
+  const arrow  = document.getElementById('btn-arrow');
+  btn.disabled = loading;
+
+  if (loading) {
+    label.textContent = 'Saving';
+    arrow.outerHTML   = '<span id="btn-arrow" class="btn-spinner"></span>';
+  } else {
+    label.textContent = 'Add Expense';
+    const spinnerEl = document.getElementById('btn-arrow');
+    if (spinnerEl) spinnerEl.outerHTML = '<span id="btn-arrow">→</span>';
+  }
+}
+
+/* ── Clear form ── */
+document.getElementById('clear-btn').addEventListener('click', () => {
+  document.getElementById('amount').value      = '';
+  document.getElementById('category').value    = '';
+  document.getElementById('date').value        = todayIso();
+  document.getElementById('description').value = '';
+  clearAllErrors();
+  document.getElementById('success-banner').classList.remove('visible');
+  document.getElementById('error-banner').classList.remove('visible');
+  document.getElementById('post-actions').style.display = 'none';
+  document.getElementById('amount').focus();
+});
+
+/* ── Submit ── */
+document.getElementById('expense-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  clearAllErrors();
+  document.getElementById('success-banner').classList.remove('visible');
+  document.getElementById('error-banner').classList.remove('visible');
+
+  const amount      = document.getElementById('amount').value.trim();
+  const category    = document.getElementById('category').value.trim();
+  const date        = document.getElementById('date').value.trim();
+  const description = document.getElementById('description').value.trim();
+
+  /* ── Client-side validation ── */
+  let valid = true;
+
+  if (!amount || isNaN(parseFloat(amount))) {
+    showFieldError('err-amount', 'Please enter a valid amount.');
+    valid = false;
+  } else if (parseFloat(amount) <= 0) {
+    showFieldError('err-amount', 'Amount must be greater than ₹0.');
+    valid = false;
+  }
+
+  if (!category) {
+    showFieldError('err-category', 'Please select a category.');
+    valid = false;
+  }
+
+  if (!date) {
+    showFieldError('err-date', 'Please select a date.');
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  /* ── Submit to backend ── */
+  setLoading(true);
+
+  try {
+    const data = await apiFetch('/api/expenses', {
+      method: 'POST',
+      body: JSON.stringify({ amount, category, date, description })
+    });
+
+    /* Success */
+    const msg = `${formatRupees(data.expense.amount)} · ${data.expense.category} · ${formatDateLong(date)}`;
+    showSuccessBanner(msg);
+
+    /* Reset form */
+    document.getElementById('amount').value      = '';
+    document.getElementById('category').value    = '';
+    document.getElementById('date').value        = todayIso();
+    document.getElementById('description').value = '';
+
+    /* Store toast message for overview page */
+    sessionStorage.setItem('spendex_added', JSON.stringify({
+      category: data.expense.category,
+      amount:   data.expense.amount
+    }));
+
+    /* In-page toast too */
+    showToast('Expense Added', msg);
+
+  } catch (err) {
+    const msg = err.message || 'An unexpected error occurred.';
+
+    /* Try to route error to the right field */
+    if (msg.toLowerCase().includes('amount')) {
+      showFieldError('err-amount', msg);
+    } else if (msg.toLowerCase().includes('category')) {
+      showFieldError('err-category', msg);
+    } else if (msg.toLowerCase().includes('date')) {
+      showFieldError('err-date', msg);
+    } else {
+      showErrorBanner(msg);
+    }
+
+  } finally {
+    setLoading(false);
+  }
+});
+
+/* ── Clear error on field change ── */
+document.getElementById('amount').addEventListener('input',
+  () => clearFieldError('err-amount'));
+document.getElementById('category').addEventListener('change',
+  () => clearFieldError('err-category'));
+document.getElementById('date').addEventListener('change',
+  () => clearFieldError('err-date'));
+</script>
+</body>
+</html>
