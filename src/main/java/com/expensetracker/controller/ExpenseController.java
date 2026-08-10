@@ -186,8 +186,8 @@ public class ExpenseController {
     // ─── DELETE /api/expenses/{id} ────────────────────────────────────────────
 
     @DeleteMapping("/expenses/{id}")
-    public ResponseEntity<Map<String, Object>> deleteExpense(@PathVariable String id) {
-        if (id == null || id.isBlank()) {
+    public ResponseEntity<Map<String, Object>> deleteExpense(@PathVariable Long id) {
+        if (id == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid expense ID."));
         }
         boolean deleted = expenseService.deleteExpense(id);

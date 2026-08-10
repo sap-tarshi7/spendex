@@ -2,18 +2,21 @@ package com.expensetracker.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
+import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 
 /**
  * Expense — core domain model.
- * Demonstrates OOP: encapsulation with private fields + getters/setters.
- * Uses LocalDate for type-safe date storage.
+ * Persisted as a MySQL table via JPA.
  */
+@Entity
+@Table(name = "expenses")
 public class Expense {
 
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private double amount;
     private String category;
 
@@ -25,14 +28,12 @@ public class Expense {
     private static final DateTimeFormatter DISPLAY_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy");
     private static final DateTimeFormatter CSV_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
 
-    /** Default constructor — required for Jackson deserialization */
+    /** Default constructor — required for Jackson/JPA deserialization */
     public Expense() {
-        this.id = UUID.randomUUID().toString();
     }
 
     /** Full constructor used when creating a new expense */
     public Expense(double amount, String category, LocalDate date, String description) {
-        this.id = UUID.randomUUID().toString();
         this.amount = amount;
         this.category = category;
         this.date = date;
@@ -41,7 +42,7 @@ public class Expense {
 
     // ─── Getters ───────────────────────────────────────────────────────────────
 
-    public String getId()          { return id; }
+    public Long getId()          { return id; }
     public double getAmount()      { return amount; }
     public String getCategory()    { return category; }
     public LocalDate getDate()     { return date; }
@@ -59,7 +60,7 @@ public class Expense {
 
     // ─── Setters ───────────────────────────────────────────────────────────────
 
-    public void setId(String id)               { this.id = id; }
+    public void setId(Long id)                 { this.id = id; }
     public void setAmount(double amount)       { this.amount = amount; }
     public void setCategory(String category)   { this.category = category; }
     public void setDate(LocalDate date)        { this.date = date; }

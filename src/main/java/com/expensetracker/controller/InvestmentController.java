@@ -40,7 +40,7 @@ public class InvestmentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Investment> getInvestmentById(@PathVariable String id) {
+    public ResponseEntity<Investment> getInvestmentById(@PathVariable Long id) {
         return investmentService.getInvestmentById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -59,7 +59,7 @@ public class InvestmentController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateInvestment(@PathVariable String id, @RequestBody Investment investment) {
+    public ResponseEntity<?> updateInvestment(@PathVariable Long id, @RequestBody Investment investment) {
         if (investment.getName() == null || investment.getName().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Investment name is required.");
         }
@@ -69,7 +69,7 @@ public class InvestmentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteInvestment(@PathVariable String id) {
+    public ResponseEntity<Void> deleteInvestment(@PathVariable Long id) {
         if (investmentService.deleteInvestment(id)) {
             return ResponseEntity.ok().build();
         }

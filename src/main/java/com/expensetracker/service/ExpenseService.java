@@ -1,13 +1,12 @@
 package com.expensetracker.service;
 
 import com.expensetracker.model.Expense;
-import com.expensetracker.util.FileHandler;
-import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 /**
@@ -22,19 +21,10 @@ import java.util.stream.Collectors;
 @Service
 public class ExpenseService {
 
-    // Primary storage: ArrayList as required by assignment
-    private final ArrayList<Expense> expenses = new ArrayList<>();
-    private final FileHandler fileHandler;
+    private final ExpenseRepository expenseRepository;
 
-    public ExpenseService(FileHandler fileHandler) {
-        this.fileHandler = fileHandler;
-    }
-
-    /** Load data from CSV on startup */
-    @PostConstruct
-    public void init() {
-        List<Expense> loaded = fileHandler.loadExpenses();
-        expenses.addAll(loaded);
+    public ExpenseService(ExpenseRepository expenseRepository) {
+        this.expenseRepository = expenseRepository;
     }
 
     // ─── Core Operations ───────────────────────────────────────────────────────
@@ -60,23 +50,20 @@ public class ExpenseService {
 
         Expense expense = new Expense(amount, category.trim(), date,
                 description != null ? description.trim() : "");
-        expenses.add(expense);
-
-        // Persist immediately
-        fileHandler.saveExpenses(expenses);
-        return expense;
+        
+        return expenseRepository.save(expense);
     }
 
     /** Returns all expenses sorted newest first */
     public List<Expense> getAllExpenses() {
-        return expenses.stream()
+        return expenseRepository.findAll().stream()
                 .sorted(Comparator.comparing(Expense::getDate).reversed())
                 .collect(Collectors.toList());
     }
 
     /** Returns expenses filtered by optional category and/or month */
     public List<Expense> getFilteredExpenses(String category, YearMonth yearMonth) {
-        return expenses.stream()
+        return expenseRepository.findAll().stream()
                 .filter(e -> {
                     boolean catOk = (category == null || category.isEmpty()
                             || category.equalsIgnoreCase("All")
@@ -97,7 +84,7 @@ public class ExpenseService {
     // ─── Summary Statistics ────────────────────────────────────────────────────
 
     public double getTotalSpending() {
-        return expenses.stream().mapToDouble(Expense::getAmount).sum();
+        return expenseRepository.findAll().stream().mapToDouble(Expense::getAmount).sum();
     }
 
     public double getTotalSpendingForMonth(YearMonth ym) {
@@ -105,7 +92,8 @@ public class ExpenseService {
     }
 
     public double getAverageExpense() {
-        return expenses.isEmpty() ? 0.0 : getTotalSpending() / expenses.size();
+        List<Expense> all = expenseRepository.findAll();
+        return all.isEmpty() ? 0.0 : getTotalSpending() / all.size();
     }
 
     public double getAverageExpenseForMonth(YearMonth ym) {
@@ -119,10 +107,10 @@ public class ExpenseService {
                 .mapToDouble(Expense::getAmount).max().orElse(0.0);
     }
 
-    public int getTransactionCount() { return expenses.size(); }
+    public int getTransactionCount() { return (int) expenseRepository.count(); }
 
     public int getTransactionCountForMonth(YearMonth ym) {
-        return (int) expenses.stream()
+        return (int) expenseRepository.findAll().stream()
                 .filter(e -> YearMonth.from(e.getDate()).equals(ym)).count();
     }
 
@@ -147,7 +135,7 @@ public class ExpenseService {
     }
 
     public Map<String, Double> getAllCategoryTotals() {
-        return getCategoryTotals(expenses);
+        return getCategoryTotals(expenseRepository.findAll());
     }
 
     public String getHighestCategory() {
@@ -173,25 +161,25 @@ public class ExpenseService {
     }
 
     public List<Expense> getExpensesForMonth(YearMonth ym) {
-        return expenses.stream()
+        return expenseRepository.findAll().stream()
                 .filter(e -> YearMonth.from(e.getDate()).equals(ym))
                 .sorted(Comparator.comparing(Expense::getDate).reversed())
                 .collect(Collectors.toList());
     }
 
     /**
-     * Deletes an expense by its UUID.
+     * Deletes an expense by its ID.
      * Returns true if found and removed, false if not found.
      */
-    public boolean deleteExpense(String id) {
-        boolean removed = expenses.removeIf(e -> e.getId().equals(id));
-        if (removed) {
-            fileHandler.saveExpenses(expenses);
+    public boolean deleteExpense(Long id) {
+        if (expenseRepository.existsById(id)) {
+            expenseRepository.deleteById(id);
+            return true;
         }
-        return removed;
+        return false;
     }
 
-    public boolean isEmpty() { return expenses.isEmpty(); }
+    public boolean isEmpty() { return expenseRepository.count() == 0; }
 
     public YearMonth getCurrentMonth() { return YearMonth.now(); }
 

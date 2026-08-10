@@ -1,31 +1,43 @@
 package com.expensetracker.model;
 
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.UUID;
 import com.expensetracker.service.market.MarketQuote;
 
+@Entity
+@Table(name = "investments")
 public class Investment {
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private String name;
     private String symbol;
     private String exchange;
+    
+    @Enumerated(EnumType.STRING)
     private InvestmentType type;
     private BigDecimal quantity;
+    @Column(name = "purchase_price")
     private BigDecimal purchasePrice;
+    
+    @Column(name = "current_price")
     private BigDecimal currentPrice;
+    
+    @Column(name = "purchase_date")
     private LocalDate purchaseDate;
+    
     private String notes;
     
+    @Transient
     private transient MarketQuote lastQuote;
 
     public Investment() {
-        this.id = UUID.randomUUID().toString();
     }
 
-    public Investment(String id, String name, String symbol, String exchange, InvestmentType type, BigDecimal quantity, BigDecimal purchasePrice, BigDecimal currentPrice, LocalDate purchaseDate, String notes) {
-        this.id = (id == null || id.isEmpty()) ? UUID.randomUUID().toString() : id;
+    public Investment(Long id, String name, String symbol, String exchange, InvestmentType type, BigDecimal quantity, BigDecimal purchasePrice, BigDecimal currentPrice, LocalDate purchaseDate, String notes) {
+        this.id = id;
         this.name = name;
         this.symbol = symbol;
         this.exchange = exchange;
@@ -37,8 +49,8 @@ public class Investment {
         this.notes = notes != null ? notes : "";
     }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -105,7 +117,7 @@ public class Investment {
     
     public String toCsvLine() {
         return String.join(",", 
-            id, 
+            id != null ? String.valueOf(id) : "", 
             name.replace(",", ";"), 
             symbol != null ? symbol.replace(",", "") : "",
             exchange != null ? exchange.replace(",", "") : "",

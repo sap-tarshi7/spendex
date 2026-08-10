@@ -6,11 +6,8 @@ import com.expensetracker.model.InvestmentType;
 import com.expensetracker.service.market.MarketDataService;
 import com.expensetracker.service.market.MarketQuote;
 import com.expensetracker.service.market.MarketStatus;
-import com.expensetracker.util.FileHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
@@ -19,37 +16,28 @@ import java.util.stream.Collectors;
 @Service
 public class InvestmentService {
 
-    private final FileHandler fileHandler;
+    private final InvestmentRepository investmentRepository;
     private final MarketDataService marketDataService;
-    private final List<Investment> investments = new ArrayList<>();
 
     @Autowired
-    public InvestmentService(FileHandler fileHandler, MarketDataService marketDataService) {
-        this.fileHandler = fileHandler;
+    public InvestmentService(InvestmentRepository investmentRepository, MarketDataService marketDataService) {
+        this.investmentRepository = investmentRepository;
         this.marketDataService = marketDataService;
     }
 
-    @PostConstruct
-    public void init() {
-        investments.addAll(fileHandler.loadInvestments());
-    }
-
     public List<Investment> getAllInvestments() {
-        return new ArrayList<>(investments);
+        return investmentRepository.findAll();
     }
 
     public Investment addInvestment(Investment investment) {
-        investment.setId(UUID.randomUUID().toString());
-        investments.add(investment);
-        save();
-        return investment;
+        return investmentRepository.save(investment);
     }
 
-    public Optional<Investment> getInvestmentById(String id) {
-        return investments.stream().filter(i -> i.getId().equals(id)).findFirst();
+    public Optional<Investment> getInvestmentById(Long id) {
+        return investmentRepository.findById(id);
     }
 
-    public Optional<Investment> updateInvestment(String id, Investment updatedData) {
+    public Optional<Investment> updateInvestment(Long id, Investment updatedData) {
         return getInvestmentById(id).map(existing -> {
             existing.setName(updatedData.getName());
             existing.setSymbol(updatedData.getSymbol());
@@ -60,17 +48,16 @@ public class InvestmentService {
             existing.setCurrentPrice(updatedData.getCurrentPrice());
             existing.setPurchaseDate(updatedData.getPurchaseDate());
             existing.setNotes(updatedData.getNotes());
-            save();
-            return existing;
+            return investmentRepository.save(existing);
         });
     }
 
-    public boolean deleteInvestment(String id) {
-        boolean removed = investments.removeIf(i -> i.getId().equals(id));
-        if (removed) {
-            save();
+    public boolean deleteInvestment(Long id) {
+        if (investmentRepository.existsById(id)) {
+            investmentRepository.deleteById(id);
+            return true;
         }
-        return removed;
+        return false;
     }
 
     public InvestmentSummary getSummary() {
@@ -80,6 +67,8 @@ public class InvestmentService {
         
         MarketStatus overallStatus = MarketStatus.CLOSED;
         java.time.LocalDateTime latestUpdate = null;
+        
+        List<Investment> investments = investmentRepository.findAll();
 
         for (Investment i : investments) {
             // Dynamically attach the latest quote if applicable
@@ -129,9 +118,5 @@ public class InvestmentService {
         }
 
         return new InvestmentSummary(totalInvested, currentValue, profitLoss, returnPercentage, assetAllocation, recent, latestUpdate, overallStatus);
-    }
-
-    private void save() {
-        fileHandler.saveInvestments(investments);
     }
 }

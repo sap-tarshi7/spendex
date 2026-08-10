@@ -76,36 +76,8 @@ public class FileHandler {
     }
 
     /**
-     * Saves all expenses to the CSV file.
-     * Creates parent directories if they don't exist.
+     * Save operations removed. MySQL is now the single source of truth.
      */
-    public boolean saveExpenses(List<Expense> expenses) {
-        Path path = Paths.get(filePath);
-
-        try {
-            // Ensure parent directory exists
-            Path parent = path.getParent();
-            if (parent != null && !Files.exists(parent)) {
-                Files.createDirectories(parent);
-            }
-
-            try (BufferedWriter writer = Files.newBufferedWriter(path)) {
-                writer.write(CSV_HEADER);
-                writer.newLine();
-                for (Expense e : expenses) {
-                    writer.write(e.toCsvLine());
-                    writer.newLine();
-                }
-            }
-
-            LOGGER.info("Saved " + expenses.size() + " expenses to file.");
-            return true;
-
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Error saving expenses: " + e.getMessage(), e);
-            return false;
-        }
-    }
 
     /**
      * Parses a single CSV line into an Expense object.
@@ -151,6 +123,10 @@ public class FileHandler {
         return Paths.get(filePath).toAbsolutePath().toString();
     }
 
+    public String getInvFilePath() {
+        return Paths.get(invFilePath).toAbsolutePath().toString();
+    }
+
     public List<Investment> loadInvestments() {
         List<Investment> investments = new ArrayList<>();
         Path path = Paths.get(invFilePath);
@@ -184,28 +160,9 @@ public class FileHandler {
         return investments;
     }
 
-    public boolean saveInvestments(List<Investment> investments) {
-        Path path = Paths.get(invFilePath);
-        try {
-            Path parent = path.getParent();
-            if (parent != null && !Files.exists(parent)) {
-                Files.createDirectories(parent);
-            }
-            try (BufferedWriter writer = Files.newBufferedWriter(path)) {
-                writer.write(INV_CSV_HEADER);
-                writer.newLine();
-                for (Investment i : investments) {
-                    writer.write(i.toCsvLine());
-                    writer.newLine();
-                }
-            }
-            LOGGER.info("Saved " + investments.size() + " investments to file.");
-            return true;
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Error saving investments: " + e.getMessage(), e);
-            return false;
-        }
-    }
+    /**
+     * Save operations removed. MySQL is now the single source of truth.
+     */
 
     private Investment parseInvLine(String line, int lineNumber) {
         String[] parts = line.split(",", 10);
@@ -255,7 +212,7 @@ public class FileHandler {
                 LOGGER.warning("Skipping line " + lineNumber + ": invalid investment values.");
                 return null;
             }
-            return new Investment(id, name, symbol, exchange, type, quantity, purchasePrice, currentPrice, purchaseDate, notes);
+            return new Investment(null, name, symbol, exchange, type, quantity, purchasePrice, currentPrice, purchaseDate, notes);
         } catch (DateTimeParseException | NumberFormatException e) {
             LOGGER.warning("Skipping line " + lineNumber + " due to parsing error: " + e.getMessage());
             return null;
